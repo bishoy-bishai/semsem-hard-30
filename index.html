@@ -14,10 +14,21 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;900&family=Tajawal:wght@400;500;700&display=swap" rel="stylesheet">
 
-<!-- Firebase SDK -->
+<!-- Firebase SDK v9+ Modular -->
 <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-app.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-auth.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-database.js"></script>
+<script>
+  // Wait for Firebase to load
+  window.firebaseReady = new Promise((resolve) => {
+    const checkFirebase = setInterval(() => {
+      if (typeof firebase !== 'undefined') {
+        clearInterval(checkFirebase);
+        resolve();
+      }
+    }, 100);
+  });
+</script>
 
 <style>
   :root{
@@ -526,7 +537,7 @@
 </div>
 
 <script>
-/* ============ FIREBASE CONFIG ============ */
+/* ============ FIREBASE CONFIG & INIT ============ */
 const firebaseConfig = {
   apiKey: "AIzaSyCh_i2UeOkoc-nStSE7RWNIbPMali9MpPk",
   authDomain: "semsem-hard-30.firebaseapp.com",
@@ -538,9 +549,37 @@ const firebaseConfig = {
   measurementId: "G-E8L13FKQLD"
 };
 
-firebase.initializeApp(firebaseConfig);
-const auth = firebase.auth();
-const db = firebase.database();
+let auth, db;
+
+window.firebaseReady.then(() => {
+  firebase.initializeApp(firebaseConfig);
+  auth = firebase.auth();
+  db = firebase.database();
+  
+  auth.onAuthStateChanged(user => {
+    if(user){
+      currentUser = user;
+      document.getElementById("authScreen").classList.add("hidden");
+      document.getElementById("appContainer").style.display = "block";
+      
+      const namePart = user.email.split("@")[0];
+      document.getElementById("userEmail").textContent = namePart;
+      document.getElementById("userEmailFull").textContent = user.email;
+      
+      if(user.photoURL) {
+        document.getElementById("userAvatar").src = user.photoURL;
+      } else {
+        document.getElementById("userAvatar").src = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Crect fill='%23BFFF3C' width='40' height='40'/%3E%3Ctext x='20' y='28' font-size='24' font-weight='bold' fill='%23110a0a' text-anchor='middle'%3E👤%3C/text%3E%3C/svg%3E";
+      }
+      
+      loadDataFromFirebase();
+    } else {
+      document.getElementById("authScreen").classList.remove("hidden");
+      document.getElementById("appContainer").style.display = "none";
+      currentUser = null;
+    }
+  });
+});
 
 /* ============ STATE ============ */
 const AR = ["٠","١","٢","٣","٤","٥","٦","٧","٨","٩"];
@@ -561,67 +600,47 @@ function day(d){ if(!state.days[d]) state.days[d]=blankDay(); return state.days[
 function isComplete(rec){ return rec.workout && rec.book && rec.water>=2000 && rec.weight!=null && rec.words.length>=10; }
 
 /* ============ GOOGLE AUTH ============ */
-function signInWithGoogle() {
-  const provider = new firebase.auth.GoogleAuthProvider();
-  document.getElementById("authLoading").style.display = "block";
-  
-  firebase.auth().signInWithPopup(provider).catch(error => {
-    document.getElementById("authErr").textContent = "خطأ في تسجيل الدخول: " + error.message;
+async function signInWithGoogle() {
+  try {
+    await window.firebaseReady;
+    const provider = new firebase.auth.GoogleAuthProvider();
+    document.getElementById("authLoading").style.display = "block";
+    
+    await firebase.auth().signInWithPopup(provider);
+  } catch(error) {
+    document.getElementById("authErr").textContent = "خطأ: " + error.message;
     document.getElementById("authErr").classList.add("show");
     document.getElementById("authLoading").style.display = "none";
-  });
-}
-
-function signInWithEmail() {
-  const email = document.getElementById("authEmail").value.trim();
-  const pass = document.getElementById("authPass").value;
-  const err = document.getElementById("authErr");
-  
-  if(!email || !pass){ 
-    err.textContent = "ملء البريد وكلمة المرور"; 
-    err.classList.add("show"); 
-    return; 
   }
-  
-  err.classList.remove("show");
-  document.getElementById("authLoading").style.display = "block";
-  
-  // Try sign in first
-  firebase.auth().signInWithEmailAndPassword(email, pass)
-    .catch(() => {
-      // If failed, create new account
-      return firebase.auth().createUserWithEmailAndPassword(email, pass);
-    })
-    .catch(error => {
-      err.textContent = "خطأ: " + error.message;
-      err.classList.add("show");
-      document.getElementById("authLoading").style.display = "none";
-    });
 }
 
-auth.onAuthStateChanged(user => {
-  if(user){
-    currentUser = user;
-    document.getElementById("authScreen").classList.add("hidden");
-    document.getElementById("appContainer").style.display = "block";
+async function signInWithEmail() {
+  try {
+    await window.firebaseReady;
+    const email = document.getElementById("authEmail").value.trim();
+    const pass = document.getElementById("authPass").value;
+    const err = document.getElementById("authErr");
     
-    const namePart = user.email.split("@")[0];
-    document.getElementById("userEmail").textContent = namePart;
-    document.getElementById("userEmailFull").textContent = user.email;
-    
-    if(user.photoURL) {
-      document.getElementById("userAvatar").src = user.photoURL;
-    } else {
-      document.getElementById("userAvatar").src = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Crect fill='%23BFFF3C' width='40' height='40'/%3E%3Ctext x='20' y='28' font-size='24' font-weight='bold' fill='%23110a0a' text-anchor='middle'%3E👤%3C/text%3E%3C/svg%3E";
+    if(!email || !pass){ 
+      err.textContent = "ملء البريد وكلمة المرور"; 
+      err.classList.add("show"); 
+      return; 
     }
     
-    loadDataFromFirebase();
-  } else {
-    document.getElementById("authScreen").classList.remove("hidden");
-    document.getElementById("appContainer").style.display = "none";
-    currentUser = null;
+    err.classList.remove("show");
+    document.getElementById("authLoading").style.display = "block";
+    
+    try {
+      await firebase.auth().signInWithEmailAndPassword(email, pass);
+    } catch {
+      await firebase.auth().createUserWithEmailAndPassword(email, pass);
+    }
+  } catch(error) {
+    document.getElementById("authErr").textContent = "خطأ: " + error.message;
+    document.getElementById("authErr").classList.add("show");
+    document.getElementById("authLoading").style.display = "none";
   }
-});
+}
 
 function logout(){
   if(confirm("تأكيد تسجيل الخروج؟")){
