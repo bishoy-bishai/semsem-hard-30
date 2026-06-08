@@ -5,7 +5,6 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
 <title>Semsem Hard 30 - Sync</title>
 
-<!-- iPhone home-screen app settings -->
 <meta name="apple-mobile-web-app-capable" content="yes" />
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
 <meta name="apple-mobile-web-app-title" content="Semsem 30" />
@@ -19,6 +18,9 @@
 <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-app.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-auth.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-database.js"></script>
+
+<!-- Google Sign-In -->
+<script src="https://accounts.google.com/gsi/client" async defer></script>
 
 <style>
   :root{
@@ -59,18 +61,12 @@
   /* AUTH SCREEN */
   #authScreen{position:fixed;inset:0;background:var(--bg);z-index:100;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:20px;}
   #authScreen.hidden{display:none;}
-  .auth-card{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:28px 24px;max-width:360px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,.4);}
-  .auth-card h2{font-family:"Cairo";font-weight:900;font-size:28px;margin:0 0 6px;text-align:center;}
-  .auth-card .sub{color:var(--muted);text-align:center;margin-bottom:24px;font-size:14px;}
-  .auth-input{width:100%;background:var(--surface2);border:1.5px solid var(--line);color:var(--text);border-radius:13px;padding:13px 16px;font-size:15px;font-family:"Tajawal";margin-bottom:11px;outline:none;-webkit-user-select:text;user-select:text;}
-  .auth-input:focus{border-color:var(--acid);}
-  .auth-btn{width:100%;background:var(--acid);color:#11140a;border:none;border-radius:13px;font-family:"Cairo";font-weight:800;font-size:15px;padding:14px;cursor:pointer;margin-bottom:10px;transition:var(--tap);}
-  .auth-btn:active{transform:scale(.96);}
-  .auth-toggle{text-align:center;color:var(--muted);font-size:13px;}
-  .auth-toggle button{background:none;border:none;color:var(--acid);cursor:pointer;font-weight:700;text-decoration:underline;}
-  .auth-err{color:var(--flame);font-size:12px;margin-top:8px;text-align:center;display:none;}
-  .auth-err.show{display:block;}
-  .loading{text-align:center;color:var(--muted);font-size:13px;margin-top:12px;}
+  .auth-card{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:40px 28px;max-width:380px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,.4);}
+  .auth-card h2{font-family:"Cairo";font-weight:900;font-size:32px;margin:0 0 10px;text-align:center;}
+  .auth-card .sub{color:var(--muted);text-align:center;margin-bottom:32px;font-size:15px;line-height:1.7;}
+  .google-btn-wrapper{display:flex;justify-content:center;margin-bottom:20px;}
+  #googleSignInBtn{width:100%;max-width:300px;}
+  .loading{text-align:center;color:var(--muted);font-size:13px;margin-top:16px;}
 
   /* HEADER */
   header{padding:max(20px,env(safe-area-inset-top)) 0 8px;}
@@ -84,7 +80,9 @@
   .brand h1{margin:0;font-size:22px;font-weight:900;letter-spacing:.3px;line-height:1.1;}
   .brand .sub{margin:0;color:var(--muted);font-size:12.5px;font-weight:500;}
   .accent{color:var(--acid);}
-  .user-badge{margin-inline-start:auto;font-size:12px;color:var(--muted);font-weight:700;}
+  .user-info{margin-inline-start:auto;display:flex;align-items:center;gap:8px;}
+  .user-avatar{width:36px;height:36px;border-radius:50%;background:var(--surface2);border:2px solid var(--acid);}
+  .user-email{font-size:12px;color:var(--muted);font-weight:700;}
 
   .progress-card{
     margin-top:16px;background:var(--surface);border:1px solid var(--line);
@@ -218,7 +216,6 @@
   .face .hint{position:absolute;bottom:18px;color:var(--muted);font-size:12px;}
   .face .mean{font-family:"Cairo";font-weight:700;font-size:24px;}
   .face .sent{margin-top:18px;font-size:16px;font-style:italic;color:#d7d2e6;line-height:1.7;}
-  .face .sent b{color:var(--book);font-style:normal;}
   .card-nav{display:flex;align-items:center;justify-content:center;gap:18px;margin-top:18px;}
   .card-nav button{width:50px;height:50px;border-radius:50%;border:1px solid var(--line);background:var(--surface);color:var(--text);font-size:22px;cursor:pointer;transition:var(--tap);}
   .card-nav button:active{transform:scale(.9);}
@@ -256,6 +253,18 @@
   @keyframes fade{from{opacity:0;transform:translateY(6px);}to{opacity:1;transform:none;}}
   .pop{animation:pop .3s ease;}
   @keyframes pop{0%{transform:scale(.8);}60%{transform:scale(1.08);}100%{transform:scale(1);}}
+
+  /* Google Sign-In customization */
+  #googleSignInBtn::part(button){
+    background-color: var(--acid) !important;
+    color: #11140a !important;
+    border-radius: 13px !important;
+    font-family: "Cairo", sans-serif !important;
+    font-weight: 800 !important;
+    font-size: 16px !important;
+    padding: 14px 24px !important;
+    width: 100% !important;
+  }
 </style>
 </head>
 <body>
@@ -264,17 +273,13 @@
 <div id="authScreen">
   <div class="auth-card">
     <h2>Semsem Hard 30</h2>
-    <p class="sub">التحدي بتاعك مع Cloud Sync ☁️</p>
+    <p class="sub">التحدي بتاعك مع Cloud Sync ☁️<br>
+    <strong style="color:var(--acid)">كل بياناتك متزامنة على كل أجهزتك</strong></p>
     
-    <input class="auth-input" id="authEmail" type="email" placeholder="بريدك الإلكتروني" />
-    <input class="auth-input" id="authPass" type="password" placeholder="كلمة المرور" />
-    
-    <button class="auth-btn" id="authBtn" onclick="authAction()">دخول</button>
-    <div class="auth-err" id="authErr"></div>
-    
-    <div class="auth-toggle">
-      جديد؟ <button onclick="toggleAuthMode()">اعمل حساب</button>
+    <div class="google-btn-wrapper">
+      <div id="googleSignInBtn"></div>
     </div>
+    
     <div class="loading" id="authLoading" style="display:none">جاري التحميل...</div>
   </div>
 </div>
@@ -289,7 +294,10 @@
           <h1>Semsem <span class="accent">Hard 30</span></h1>
           <p class="sub">التحدي بتاعك · يوم بيوم 💪</p>
         </div>
-        <div class="user-badge" id="userEmail"></div>
+        <div class="user-info">
+          <img id="userAvatar" class="user-avatar" />
+          <div class="user-email" id="userEmail"></div>
+        </div>
       </div>
       <div class="progress-card">
         <div class="pc-top">
@@ -312,7 +320,6 @@
         <button class="nav" id="prevDay">›</button>
       </div>
 
-      <!-- workout -->
       <div class="task" id="task-workout">
         <div class="task-head">
           <div class="ic w">🏋️</div>
@@ -326,7 +333,6 @@
         </div>
       </div>
 
-      <!-- german -->
       <div class="task" id="task-de">
         <div class="task-head">
           <div class="ic de">🇩🇪</div>
@@ -345,7 +351,6 @@
         <div class="word-list" id="wordList"></div>
       </div>
 
-      <!-- book -->
       <div class="task" id="task-book">
         <div class="task-head">
           <div class="ic bk">📖</div>
@@ -359,7 +364,6 @@
         </div>
       </div>
 
-      <!-- water -->
       <div class="task" id="task-water">
         <div class="task-head">
           <div class="ic h2o">💧</div>
@@ -372,7 +376,6 @@
         <div class="water-meta"><span>دوس على الكاسة لما تشربها</span><b id="waterTxt">0 / 2000 مل</b></div>
       </div>
 
-      <!-- weight -->
       <div class="task" id="task-weight">
         <div class="task-head">
           <div class="ic wt">⚖️</div>
@@ -473,7 +476,7 @@ firebase.initializeApp(firebaseConfig);
 const auth = firebase.auth();
 const db = firebase.database();
 
-/* ============ STATE & UI ============ */
+/* ============ STATE ============ */
 const AR = ["٠","١","٢","٣","٤","٥","٦","٧","٨","٩"];
 const num = n => String(n).replace(/[0-9]/g, d => AR[+d]);
 const DAY_MS = 86400000;
@@ -481,7 +484,6 @@ const DAY_MS = 86400000;
 let state = { startDate: todayStr(), days: {} };
 let selected = todayStr();
 let currentUser = null;
-let authMode = "login"; // or "signup"
 let cards = [], ci = 0, flipped = false;
 let dataRef = null;
 
@@ -492,14 +494,61 @@ function blankDay(){ return {workout:false, book:false, water:0, weight:null, wo
 function day(d){ if(!state.days[d]) state.days[d]=blankDay(); return state.days[d]; }
 function isComplete(rec){ return rec.workout && rec.book && rec.water>=2000 && rec.weight!=null && rec.words.length>=10; }
 
-/* ============ AUTH ============ */
+/* ============ GOOGLE AUTH ============ */
+window.onload = function() {
+  google.accounts.id.initialize({
+    client_id: '315802328290-820khp49i6aafoggh1ck2bkpj0k7t9vn.apps.googleusercontent.com',
+    callback: handleCredentialResponse
+  });
+  
+  google.accounts.id.renderButton(
+    document.getElementById('googleSignInBtn'),
+    { theme: 'filled_black', size: 'large', width: '100%' }
+  );
+};
+
+function handleCredentialResponse(response) {
+  document.getElementById("authLoading").style.display = "block";
+  
+  const credential = response.credential;
+  const decodedToken = JSON.parse(atob(credential.split('.')[1]));
+  
+  auth.signInWithCustomToken(credential).catch(error => {
+    // Fallback: create anonymous user with email from Google
+    const email = decodedToken.email;
+    const password = decodedToken.sub; // Use Google ID as password
+    
+    auth.signInWithEmailAndPassword(email, password)
+      .catch(() => {
+        auth.createUserWithEmailAndPassword(email, password)
+          .then(() => signInSuccess())
+          .catch(e => console.error("Auth error:", e));
+      })
+      .then(() => signInSuccess())
+      .catch(e => console.error("Auth error:", e));
+  });
+}
+
+function signInSuccess() {
+  document.getElementById("authLoading").style.display = "none";
+}
+
 auth.onAuthStateChanged(user => {
   if(user){
     currentUser = user;
     document.getElementById("authScreen").classList.add("hidden");
     document.getElementById("appContainer").style.display = "block";
-    document.getElementById("userEmail").textContent = user.email.split("@")[0];
+    
+    const namePart = user.email.split("@")[0];
+    document.getElementById("userEmail").textContent = namePart;
     document.getElementById("userEmailFull").textContent = user.email;
+    
+    if(user.photoURL) {
+      document.getElementById("userAvatar").src = user.photoURL;
+    } else {
+      document.getElementById("userAvatar").src = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Crect fill='%23BFFF3C' width='40' height='40'/%3E%3Ctext x='20' y='28' font-size='24' font-weight='bold' fill='%23110a0a' text-anchor='middle'%3E👤%3C/text%3E%3C/svg%3E";
+    }
+    
     loadDataFromFirebase();
   } else {
     document.getElementById("authScreen").classList.remove("hidden");
@@ -507,38 +556,6 @@ auth.onAuthStateChanged(user => {
     currentUser = null;
   }
 });
-
-function toggleAuthMode(){
-  authMode = authMode === "login" ? "signup" : "login";
-  const btn = document.getElementById("authBtn");
-  btn.textContent = authMode === "login" ? "دخول" : "إنشاء حساب";
-  document.querySelector(".auth-toggle button").textContent = authMode === "login" ? "اعمل حساب" : "عندك حساب؟";
-}
-
-function authAction(){
-  const email = document.getElementById("authEmail").value.trim();
-  const pass = document.getElementById("authPass").value;
-  const err = document.getElementById("authErr");
-  const btn = document.getElementById("authBtn");
-  const loading = document.getElementById("authLoading");
-  
-  if(!email || !pass){ err.textContent = "ملء البريد وكلمة المرور"; err.classList.add("show"); return; }
-  
-  err.classList.remove("show");
-  btn.disabled = true;
-  loading.style.display = "block";
-  
-  if(authMode === "login"){
-    auth.signInWithEmailAndPassword(email, pass).catch(e => {
-      err.textContent = "بريد أو كلمة مرور خاطئة"; err.classList.add("show");
-    });
-  } else {
-    auth.createUserWithEmailAndPassword(email, pass).catch(e => {
-      err.textContent = "البريد مستخدم أو كلمة مرور ضعيفة"; err.classList.add("show");
-    });
-  }
-  setTimeout(() => { btn.disabled = false; loading.style.display = "none"; }, 2000);
-}
 
 function logout(){
   if(confirm("تأكيد تسجيل الخروج؟")){
@@ -555,11 +572,11 @@ function loadDataFromFirebase(){
     if(snapshot.exists()){
       state = snapshot.val();
       if(!state.startDate) state.startDate = todayStr();
-      renderAll();
     } else {
       state = { startDate: todayStr(), days: {} };
       saveDataToFirebase();
     }
+    renderAll();
   });
 }
 
@@ -568,7 +585,7 @@ function saveDataToFirebase(){
   db.ref(`users/${currentUser.uid}`).set(state).catch(e => console.error("Save error:", e));
 }
 
-/* ============ UI SYNC ============ */
+/* ============ UI FUNCTIONS ============ */
 function toggleWorkout(){ const r=day(selected); r.workout=!r.workout; saveDataToFirebase();
   const b=document.getElementById("ck-workout"); b.classList.toggle("on",r.workout); if(r.workout)b.classList.add("pop");
   document.getElementById("task-workout").classList.toggle("done",r.workout); renderHeader(); setTimeout(()=>b.classList.remove("pop"),300); }
@@ -582,13 +599,12 @@ function addWord(){
   const mn=document.getElementById("in-mn").value.trim();
   const sn=document.getElementById("in-sn").value.trim();
   if(!de){ document.getElementById("in-de").focus(); return; }
-  day(selected).words.push({de,mn,sn,date:selected});
+  day(selected).words.push({de,mn,sn});
   saveDataToFirebase();
   document.getElementById("in-de").value="";
   document.getElementById("in-mn").value="";
   document.getElementById("in-sn").value="";
   renderWords(day(selected)); renderHeader();
-  document.getElementById("in-de").focus();
 }
 
 function delWord(i){ day(selected).words.splice(i,1); saveDataToFirebase(); renderWords(day(selected)); renderHeader(); }
@@ -601,10 +617,9 @@ function saveWeight(){
   document.getElementById("task-weight").classList.toggle("done", r.weight!=null);
   const tag=document.getElementById("wtSaved"); tag.classList.add("show"); setTimeout(()=>tag.classList.remove("show"),1500);
   renderHeader();
-  document.getElementById("in-weight").blur();
 }
 
-/* ============ RENDER FUNCTIONS ============ */
+/* ============ RENDER ============ */
 const weekdays=["الأحد","الاثنين","الثلاثاء","الأربعاء","الخميس","الجمعة","السبت"];
 const months=["يناير","فبراير","مارس","إبريل","مايو","يونيو","يوليو","أغسطس","سبتمبر","أكتوبر","نوفمبر","ديسمبر"];
 
@@ -799,16 +814,12 @@ function cardPrev(){ if(ci>0){ci--;drawCard();} }
 
 function attachSwipe(){
   const fc=document.getElementById("fc"); if(!fc) return;
-  let x0=null,y0=null,moved=false;
-  fc.addEventListener("touchstart",e=>{x0=e.touches[0].clientX;y0=e.touches[0].clientY;moved=false;},{passive:true});
-  fc.addEventListener("touchmove",e=>{ if(x0!=null){ if(Math.abs(e.touches[0].clientX-x0)>10) moved=true; }},{passive:true});
+  let x0=null;
+  fc.addEventListener("touchstart",e=>{x0=e.touches[0].clientX;},{passive:true});
   fc.addEventListener("touchend",e=>{
     if(x0==null) return;
-    const dx=e.changedTouches[0].clientX-x0, dy=e.changedTouches[0].clientY-y0;
-    if(Math.abs(dx)>45 && Math.abs(dx)>Math.abs(dy)){
-      if(dx<0) cardPrev(); else cardNext();
-      e.preventDefault();
-    }
+    const dx=e.changedTouches[0].clientX-x0;
+    if(Math.abs(dx)>45) dx<0 ? cardPrev() : cardNext();
     x0=null;
   });
 }
