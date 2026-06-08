@@ -19,9 +19,6 @@
 <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-auth.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-database.js"></script>
 
-<!-- Google Sign-In -->
-<script src="https://accounts.google.com/gsi/client" async defer></script>
-
 <style>
   :root{
     --bg:#0E0F12;
@@ -59,14 +56,76 @@
   .wrap{position:relative;z-index:1;max-width:560px;margin:0 auto;padding:0 16px 130px;}
 
   /* AUTH SCREEN */
-  #authScreen{position:fixed;inset:0;background:var(--bg);z-index:100;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:20px;}
+  #authScreen{
+    position:fixed;inset:0;background:linear-gradient(160deg,#0a0b0e,#151820);z-index:100;display:flex;
+    flex-direction:column;align-items:center;justify-content:center;padding:20px;
+  }
+  #authScreen::before{content:"";position:absolute;inset:0;background:radial-gradient(900px 500px at 85% -8%, rgba(191,255,60,.08), transparent 60%),radial-gradient(700px 500px at -10% 110%, rgba(60,199,255,.06), transparent 60%);pointer-events:none;}
   #authScreen.hidden{display:none;}
-  .auth-card{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:40px 28px;max-width:380px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,.4);}
-  .auth-card h2{font-family:"Cairo";font-weight:900;font-size:32px;margin:0 0 10px;text-align:center;}
-  .auth-card .sub{color:var(--muted);text-align:center;margin-bottom:32px;font-size:15px;line-height:1.7;}
-  .google-btn-wrapper{display:flex;justify-content:center;margin-bottom:20px;}
-  #googleSignInBtn{width:100%;max-width:300px;}
-  .loading{text-align:center;color:var(--muted);font-size:13px;margin-top:16px;}
+  
+  .auth-card{
+    position:relative;z-index:2;background:linear-gradient(160deg,#1f2229,#16191f);border:1.5px solid rgba(191,255,60,.15);
+    border-radius:28px;padding:48px 32px;max-width:400px;width:100%;
+    box-shadow:0 25px 80px rgba(0,0,0,.6), inset 0 1px 0 rgba(191,255,60,.1);
+  }
+  .auth-card h2{
+    font-family:"Cairo";font-weight:900;font-size:36px;margin:0 0 8px;text-align:center;
+    background:linear-gradient(135deg,#BFFF3C,#8ad21f);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;
+  }
+  .auth-card .sub{
+    color:#a8b0bc;text-align:center;margin-bottom:40px;font-size:14px;line-height:1.8;font-weight:500;
+  }
+  
+  .auth-input{
+    width:100%;background:rgba(33,36,46,.6);border:1.5px solid rgba(45,49,60,.8);
+    color:var(--text);border-radius:14px;padding:15px 18px;font-size:15px;
+    font-family:"Tajawal";margin-bottom:13px;outline:none;-webkit-user-select:text;user-select:text;
+    transition:all .2s ease;backdrop-filter:blur(4px);
+  }
+  .auth-input:focus{
+    border-color:var(--acid);background:rgba(33,36,46,.8);
+    box-shadow:0 0 16px rgba(191,255,60,.2);
+  }
+  .auth-input::placeholder{color:#6b7280;}
+  
+  .auth-btn{
+    width:100%;background:linear-gradient(135deg,#BFFF3C,#8ad21f);
+    color:#0a0b0e;border:none;border-radius:14px;font-family:"Cairo";
+    font-weight:900;font-size:16px;padding:16px;cursor:pointer;
+    transition:all .2s ease;margin-bottom:12px;
+    box-shadow:0 8px 24px rgba(191,255,60,.25);
+    position:relative;overflow:hidden;
+  }
+  .auth-btn::before{
+    content:"";position:absolute;inset:0;background:rgba(255,255,255,.2);opacity:0;transition:opacity .2s;
+  }
+  .auth-btn:hover::before{opacity:1;}
+  .auth-btn:active{transform:scale(.97);}
+  .auth-btn:disabled{opacity:.6;cursor:not-allowed;}
+  
+  .auth-err{
+    color:#FF6B3C;font-size:13px;margin:12px 0 0;text-align:center;display:none;
+    background:rgba(255,107,60,.12);border:1px solid rgba(255,107,60,.25);
+    border-radius:11px;padding:10px;font-weight:600;
+  }
+  .auth-err.show{display:block;animation:shake .3s;}
+  @keyframes shake{0%{transform:translateX(-4px);}50%{transform:translateX(4px);}100%{transform:translateX(0);}}
+  
+  .auth-divider{
+    text-align:center;color:#6b7280;font-size:12px;margin:20px 0 20px;
+    font-weight:600;letter-spacing:1px;position:relative;
+  }
+  .auth-divider::before,
+  .auth-divider::after{
+    content:"";position:absolute;top:50%;width:35%;height:1px;background:linear-gradient(90deg,transparent,#3d414a,transparent);
+  }
+  .auth-divider::before{left:0;}
+  .auth-divider::after{right:0;}
+  
+  .loading{
+    text-align:center;color:var(--muted);font-size:13px;margin-top:16px;
+    animation:pulse 2s infinite;
+  }
 
   /* HEADER */
   header{padding:max(20px,env(safe-area-inset-top)) 0 8px;}
@@ -276,10 +335,17 @@
     <p class="sub">التحدي بتاعك مع Cloud Sync ☁️<br>
     <strong style="color:var(--acid)">كل بياناتك متزامنة على كل أجهزتك</strong></p>
     
-    <div class="google-btn-wrapper">
-      <div id="googleSignInBtn"></div>
-    </div>
+    <button class="auth-btn" onclick="signInWithGoogle()" style="margin-bottom:20px;">
+      📧 Sign in with Google
+    </button>
     
+    <div class="auth-divider">أو</div>
+    
+    <input class="auth-input" id="authEmail" type="email" placeholder="بريدك الإلكتروني" />
+    <input class="auth-input" id="authPass" type="password" placeholder="كلمة المرور" style="margin-bottom:16px;" />
+    <button class="auth-btn" onclick="signInWithEmail()">دخول / إنشاء حساب</button>
+    
+    <div class="auth-err" id="authErr"></div>
     <div class="loading" id="authLoading" style="display:none">جاري التحميل...</div>
   </div>
 </div>
@@ -495,42 +561,42 @@ function day(d){ if(!state.days[d]) state.days[d]=blankDay(); return state.days[
 function isComplete(rec){ return rec.workout && rec.book && rec.water>=2000 && rec.weight!=null && rec.words.length>=10; }
 
 /* ============ GOOGLE AUTH ============ */
-window.onload = function() {
-  google.accounts.id.initialize({
-    client_id: '315802328290-820khp49i6aafoggh1ck2bkpj0k7t9vn.apps.googleusercontent.com',
-    callback: handleCredentialResponse
-  });
-  
-  google.accounts.id.renderButton(
-    document.getElementById('googleSignInBtn'),
-    { theme: 'filled_black', size: 'large', width: '100%' }
-  );
-};
-
-function handleCredentialResponse(response) {
+function signInWithGoogle() {
+  const provider = new firebase.auth.GoogleAuthProvider();
   document.getElementById("authLoading").style.display = "block";
   
-  const credential = response.credential;
-  const decodedToken = JSON.parse(atob(credential.split('.')[1]));
-  
-  auth.signInWithCustomToken(credential).catch(error => {
-    // Fallback: create anonymous user with email from Google
-    const email = decodedToken.email;
-    const password = decodedToken.sub; // Use Google ID as password
-    
-    auth.signInWithEmailAndPassword(email, password)
-      .catch(() => {
-        auth.createUserWithEmailAndPassword(email, password)
-          .then(() => signInSuccess())
-          .catch(e => console.error("Auth error:", e));
-      })
-      .then(() => signInSuccess())
-      .catch(e => console.error("Auth error:", e));
+  firebase.auth().signInWithPopup(provider).catch(error => {
+    document.getElementById("authErr").textContent = "خطأ في تسجيل الدخول: " + error.message;
+    document.getElementById("authErr").classList.add("show");
+    document.getElementById("authLoading").style.display = "none";
   });
 }
 
-function signInSuccess() {
-  document.getElementById("authLoading").style.display = "none";
+function signInWithEmail() {
+  const email = document.getElementById("authEmail").value.trim();
+  const pass = document.getElementById("authPass").value;
+  const err = document.getElementById("authErr");
+  
+  if(!email || !pass){ 
+    err.textContent = "ملء البريد وكلمة المرور"; 
+    err.classList.add("show"); 
+    return; 
+  }
+  
+  err.classList.remove("show");
+  document.getElementById("authLoading").style.display = "block";
+  
+  // Try sign in first
+  firebase.auth().signInWithEmailAndPassword(email, pass)
+    .catch(() => {
+      // If failed, create new account
+      return firebase.auth().createUserWithEmailAndPassword(email, pass);
+    })
+    .catch(error => {
+      err.textContent = "خطأ: " + error.message;
+      err.classList.add("show");
+      document.getElementById("authLoading").style.display = "none";
+    });
 }
 
 auth.onAuthStateChanged(user => {
